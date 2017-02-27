@@ -121,8 +121,9 @@ def test_logical_basis(H0_num_non_herm, bare_basis, fortran_logical_states):
 def test_drift_ham(H0_num_non_herm, datadir):
     """Test that drift Hamiltonian matches the one calculated in Fortran"""
     H0_num = H0_num_non_herm.data # in MHz
-    H0_num_expected = QDYN.io.read_indexed_matrix(
-        os.path.join(datadir, "ham_drift.dat")) * 1000.0  # GHz -> MHz
+    H0_num_expected = (QDYN.io.read_indexed_matrix(
+        os.path.join(datadir, "ham_drift.dat"), expand_hermitian=True)
+        * 1000.0)  # GHz -> MHz
     H0_num_expected.eliminate_zeros()
     assert H0_num.nnz == H0_num_expected.nnz
     diff = H0_num - H0_num_expected
