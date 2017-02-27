@@ -175,6 +175,7 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
                 num_vals[κ] = kappa[n-1]
     else:
         non_herm = False
+        non_linear_decay = False
         # non-linear decay rates are not allowed
         assert isinstance(gamma, float)
         assert isinstance(kappa, float)
