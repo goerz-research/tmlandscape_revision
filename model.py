@@ -248,6 +248,7 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
 
     model.user_data['time_unit'] = 'ns'
     model.user_data['rwa_vector'] = 'rwa_vector.dat'
-    model.user_data['write_gate'] = 'U_over_t.dat'
+    if (dissipation_model == 'non-Hermitian'):
+        model.user_data['write_gate'] = 'U_over_t.dat'
     model.user_data['basis'] = '00,01,10,11'
     return model
