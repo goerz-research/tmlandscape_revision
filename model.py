@@ -208,9 +208,9 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
     # Hamiltonian
     model.add_ham(H0_num, op_unit='MHz', op_type='potential')
     model.add_ham(H1_num, pulse=pulse, op_unit='dimensionless',
-                  op_type='dipole')
+                  op_type='dipole', sparsity_model='indexed')
     model.add_ham(H1_num.dag(), pulse=pulse, op_unit='dimensionless',
-                  op_type='dipole', conjg_pulse=True)
+                  op_type='dipole', conjg_pulse=True, sparsity_model='indexed')
 
     model.set_propagation(T=T, nt=nt, t0=t0, time_unit='ns',
                           prop_method='newton')
