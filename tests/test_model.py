@@ -2,6 +2,7 @@
 QDYN and transmon programs. Run through `py.test`"""
 import os
 import sys
+import re
 import subprocess
 
 import pytest
@@ -16,9 +17,6 @@ import QDYN
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import model
-
-
-datadir = pytest.fixture(qnet.misc.testing_tools.datadir)
 
 
 @pytest.fixture
@@ -57,7 +55,8 @@ def H0_num_non_herm(H0_non_herm):
 
 
 @pytest.fixture
-def non_herm_model(datadir):
+def non_herm_model(request):
+    datadir = os.path.splitext(request.module.__file__)[0]
     w1     = 6000.0 # MHz
     w2     = 5900.0 # MHz
     wc     = 6200.0 # MHz
@@ -73,6 +72,26 @@ def non_herm_model(datadir):
     return model.transmon_model(
         n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
         lambda_a=0.93, pulse=pulse, dissipation_model='non-Hermitian')
+
+
+@pytest.fixture
+def liouville_model(request):
+    datadir = os.path.splitext(request.module.__file__)[0]
+    w1     = 6000.0 # MHz
+    w2     = 5900.0 # MHz
+    wc     = 6200.0 # MHz
+    wd     = 5932.5 # MHz
+    alpha1 = -290.0 # MHz
+    alpha2 = -310.0 # MHz
+    g      =   70.0 # MHz
+    n_qubit = 5
+    n_cavity = 6
+    kappa = 0.05 # MHz
+    gamma = 0.012 # MHz
+    pulse = QDYN.pulse.Pulse.read(os.path.join(datadir, "pulse.dat"))
+    return model.transmon_model(
+        n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
+        lambda_a=0.93, pulse=pulse, dissipation_model='dissipator')
 
 
 @pytest.fixture
@@ -92,7 +111,8 @@ def clip_array(a):
 
 
 @pytest.fixture
-def fortran_logical_states(datadir):
+def fortran_logical_states(request):
+    datadir = os.path.splitext(request.module.__file__)[0]
     """The logical states as they were identified by Fortran"""
     logical_states_dat = os.path.join(datadir, 'logical_states.dat')
     a00, a01, a10, a11 = np.genfromtxt(logical_states_dat, unpack=True,
@@ -118,8 +138,9 @@ def test_logical_basis(H0_num_non_herm, bare_basis, fortran_logical_states):
     assert same_state(logical_basis[3], fortran_logical_states[3])
 
 
-def test_drift_ham(H0_num_non_herm, datadir):
+def test_drift_ham(H0_num_non_herm, request):
     """Test that drift Hamiltonian matches the one calculated in Fortran"""
+    datadir = os.path.splitext(request.module.__file__)[0]
     H0_num = H0_num_non_herm.data # in MHz
     H0_num_expected = (QDYN.io.read_indexed_matrix(
         os.path.join(datadir, "ham_drift.dat"), expand_hermitian=True)
@@ -132,9 +153,10 @@ def test_drift_ham(H0_num_non_herm, datadir):
         assert abs(v) < 1e-11
 
 
-def test_prop_non_hermitian(non_herm_model, datadir, tmpdir):
+def test_prop_non_hermitian(non_herm_model, request, tmpdir):
     """Test that propagation of with a non-Hermitian Hamiltonian reproduces the
     same results as previous calculation"""
+    datadir = os.path.splitext(request.module.__file__)[0]
     rf = str(tmpdir)
     non_herm_model.write_to_runfolder(rf)
     np.savetxt(
@@ -153,3 +175,27 @@ def test_prop_non_hermitian(non_herm_model, datadir, tmpdir):
 
     err = 1 - U_actual.closest_unitary().F_avg(U_expected.closest_unitary())
     assert err < 1e-10
+
+
+def test_prop_liouville(liouville_model, request, tmpdir):
+    """Test that propagation in Liouville space reproduces the
+    same results as previous calculation"""
+    datadir = os.path.splitext(request.module.__file__)[0]
+    rf = str(tmpdir)
+    liouville_model.write_to_runfolder(rf)
+    gate = QDYN.gate2q.Gate2Q.read(os.path.join(datadir, 'target_gate.dat'),
+                                   name='O', format='array')
+    gate.write(os.path.join(rf, 'target_gate.dat'), format='array')
+    np.savetxt(
+        os.path.join(rf, 'rwa_vector.dat'),
+        liouville_model.rwa_vector, header='rwa vector [MHz]')
+    env = os.environ.copy()
+    env['OMP_NUM_THREADS'] = '16'
+    output = subprocess.check_output(
+        ['qdyn_prop_gate', '--rho', '--internal-units=GHz_units.txt',
+         '--gate=%s' % os.path.join(rf, 'target_gate.dat'), rf],
+        env=env, universal_newlines=True)
+    print(output)
+    err = float(re.search(r'1-F_avg\(U, O\)\s*=\s*([Ee.0-9+-]*)',
+                          output).group(1))
+    assert err < 5e-3
