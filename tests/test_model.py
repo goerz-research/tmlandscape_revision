@@ -1,8 +1,14 @@
 """Tests for the model, ensuring that we can reproduce with earlier version of
-QDYN and transmon programs. Run through `py.test`"""
+QDYN and transmon programs. Run through `py.test`
+
+To exlude long running tests, use
+
+py.test -m " not slowtest"
+"""
 import os
 import sys
 import re
+import copy
 import subprocess
 
 import pytest
@@ -17,6 +23,7 @@ import QDYN
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import model
+import oct
 
 
 @pytest.fixture
@@ -75,6 +82,30 @@ def non_herm_model(request):
 
 
 @pytest.fixture
+def oct_model(request):
+    datadir = os.path.splitext(request.module.__file__)[0]
+    w1     = 6000.0 # MHz
+    w2     = 5900.0 # MHz
+    wc     = 6200.0 # MHz
+    wd     = 5932.5 # MHz
+    alpha1 = -290.0 # MHz
+    alpha2 = -310.0 # MHz
+    g      =   70.0 # MHz
+    n_qubit = 5
+    n_cavity = 6
+    kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
+    gamma = [0.012, 0.024, 0.033, 10000.0]  # MHz
+    pulse = QDYN.pulse.Pulse.read(os.path.join(datadir, "pulse.guess"))
+    pulse.config_attribs['is_complex'] = True
+    gate = QDYN.gate2q.Gate2Q.read(os.path.join(datadir, 'target_gate.dat'),
+                                   name='O', format='array')
+    return model.transmon_model(
+        n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
+        lambda_a=0.1, pulse=pulse, dissipation_model='non-Hermitian',
+        gate=gate, iter_stop=10)
+
+
+@pytest.fixture
 def liouville_model(request):
     datadir = os.path.splitext(request.module.__file__)[0]
     w1     = 6000.0 # MHz
@@ -89,9 +120,11 @@ def liouville_model(request):
     kappa = 0.05 # MHz
     gamma = 0.012 # MHz
     pulse = QDYN.pulse.Pulse.read(os.path.join(datadir, "pulse.dat"))
+    gate = QDYN.gate2q.Gate2Q.read(os.path.join(datadir, 'target_gate.dat'),
+                                   name='O', format='array')
     return model.transmon_model(
         n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
-        lambda_a=0.93, pulse=pulse, dissipation_model='dissipator')
+        lambda_a=0.93, pulse=pulse, dissipation_model='dissipator', gate=gate)
 
 
 @pytest.fixture
@@ -163,7 +196,7 @@ def test_prop_non_hermitian(non_herm_model, request, tmpdir):
         os.path.join(rf, 'rwa_vector.dat'),
         non_herm_model.rwa_vector, header='rwa vector [MHz]')
     env = os.environ.copy()
-    env['OMP_NUM_THREADS'] = '1'
+    env['OMP_NUM_THREADS'] = '4'
     subprocess.check_call(
         ['qdyn_prop_gate', '--internal-units=GHz_units.txt', rf], env=env)
     U_expected = QDYN.gate2q.Gate2Q.read(os.path.join(datadir, "U.dat"),
@@ -177,23 +210,42 @@ def test_prop_non_hermitian(non_herm_model, request, tmpdir):
     assert err < 1e-10
 
 
+def test_run_oct(oct_model, request, tmpdir):
+    """Test the run_oct wrapper"""
+    rf = str(tmpdir)
+    oct_model.user_data
+
+    oct_model.write_to_runfolder(rf)
+    print("Runfolder: %s" % rf)
+    np.savetxt(
+        os.path.join(rf, 'rwa_vector.dat'),
+        oct_model.rwa_vector, header='rwa vector [MHz]')
+    oct_model.gate.write(os.path.join(rf, 'target_gate.dat'), format='array')
+
+    assert os.path.isfile(os.path.join(rf, 'target_gate.dat'))
+    oct.run_oct(rf, scratch_root=tmpdir)
+    with open(os.path.join(rf, 'oct.log')) as log_fh:
+        print(log_fh.read())
+    #output = subprocess.check_output(
+        #['qdyn_prop_gate', '--rho', '--internal-units=GHz_units.txt',
+         #'--gate=%s' % os.path.join(rf, 'target_gate.dat'), rf],
+        #env=env, universal_newlines=True)
+
+
+@pytest.mark.slowtest
 def test_prop_liouville(liouville_model, request, tmpdir):
     """Test that propagation in Liouville space reproduces the
     same results as previous calculation"""
-    datadir = os.path.splitext(request.module.__file__)[0]
     rf = str(tmpdir)
     liouville_model.write_to_runfolder(rf)
-    gate = QDYN.gate2q.Gate2Q.read(os.path.join(datadir, 'target_gate.dat'),
-                                   name='O', format='array')
-    gate.write(os.path.join(rf, 'target_gate.dat'), format='array')
+    liouville_model.gate.write(os.path.join(rf, 'target_gate.dat'))
     np.savetxt(
         os.path.join(rf, 'rwa_vector.dat'),
         liouville_model.rwa_vector, header='rwa vector [MHz]')
     env = os.environ.copy()
     env['OMP_NUM_THREADS'] = '16'
     output = subprocess.check_output(
-        ['qdyn_prop_gate', '--rho', '--internal-units=GHz_units.txt',
-         '--gate=%s' % os.path.join(rf, 'target_gate.dat'), rf],
+        ['qdyn_prop_gate', '--rho', '--internal-units=GHz_units.txt', rf],
         env=env, universal_newlines=True)
     print(output)
     err = float(re.search(r'1-F_avg\(U, O\)\s*=\s*([Ee.0-9+-]*)',
