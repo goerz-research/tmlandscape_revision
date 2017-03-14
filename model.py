@@ -119,12 +119,13 @@ def pick_logical_basis(H0_num, bare_basis):
 
 
 def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
-        gamma, kappa, lambda_a, pulse, dissipation_model='dissipator'):
-    """Return a QDYN model for propagation of a 2-transmon system
+        gamma, kappa, lambda_a, pulse, dissipation_model='dissipator',
+        gate=None, J_T='sm', iter_stop=1000):
+    """Return a QDYN model for propagation and oct of a 2-transmon system
 
     Args:
-        n_qubit (int): number of levels after which transmon is trunctaed
-        n_cavity (int): number of levels after which cavity is trunctaed
+        n_qubit (int): number of levels after which transmon is truncated
+        n_cavity (int): number of levels after which cavity is truncated
         w1 (float): frequency of qubit 1 (MHz)
         w2 (float): frequency of qubit 2 (MHz)
         wc (float): frequency of cavity (MHz)
@@ -144,8 +145,17 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
         dissipation_model (str): one of 'dissipator' (density matrix
             propagation), 'non-Hermitian' (Hilbert space propagation with
             non-Hermitian Hamiltonian)
+        gate (Gate2Q): an optional two-qubit target gate. If present, it will
+            be stored in a custom `gate` attribute. Also, the config file will
+            have have a userdefined string parameter 'gate' with value
+            'target_gate.dat'. When writing the model to the runfolder,
+            `model.gate` must be written to this file.
+        J_T (str): The functional to be used for optimization. Must be in
+            ['sm', 're', 'LI', 'PE']. Only used if `gate` is given.
+        iter_stop: Maximum number of OCT iterations
 
-    The returned model has an `rwa_vector` custom attribute.
+
+    The returned model has custom `rwa_vector` and `gate` attributes
     """
     δ1, δ2, Δ, α1, α2, g1, g2 = sympy.symbols(
         r'delta_1, delta_2, Delta, alpha_1, alpha_2, g_1, g_2', real=True)
@@ -155,6 +165,7 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
     nt = len(pulse.tgrid) + 1
     t0 = pulse.t0
     T = pulse.T
+    assert J_T in ['sm', 're', 'LI', 'PE']
     if dissipation_model == 'non-Hermitian':
         non_herm = True
         assert isinstance(gamma, type(kappa))
@@ -243,12 +254,19 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
             'shape_t_stop': T, 't_fall': UnitFloat(2.0, 'ns'),
             }
     }
-    model.set_oct(pulse_settings, method='krotovpk', J_T_conv=1e01,
-                  max_ram_mb=8000)
+    model.set_oct(pulse_settings, method='krotovpk', J_T_conv=1e-5,
+                  max_ram_mb=8000, iter_dat='oct_iters.dat',
+                  iter_stop=iter_stop)
 
     model.user_data['time_unit'] = 'ns'
     model.user_data['rwa_vector'] = 'rwa_vector.dat'
-    if (dissipation_model == 'non-Hermitian'):
+    if dissipation_model == 'non-Hermitian':
         model.user_data['write_gate'] = 'U_over_t.dat'
     model.user_data['basis'] = '00,01,10,11'
+    if gate is not None:
+        model.user_data['gate'] = 'target_gate.dat'
+        assert isinstance(gate, QDYN.gate2q.Gate2Q)
+        model.gate = gate
+        model.user_data['J_T'] = 'J_T_%s' % J_T
+        model.user_data['write_optimized_gate'] = True
     return model
