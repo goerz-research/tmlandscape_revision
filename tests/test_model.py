@@ -8,7 +8,6 @@ py.test -m " not slowtest"
 import os
 import sys
 import re
-import copy
 import subprocess
 
 import pytest
@@ -17,13 +16,11 @@ import numpy as np
 import sympy
 import scipy.sparse
 import qutip
-import qnet.misc.testing_tools
 from qnet.convert.to_qutip import convert_to_qutip
 import QDYN
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import model
-import oct
 
 
 @pytest.fixture
@@ -79,30 +76,6 @@ def non_herm_model(request):
     return model.transmon_model(
         n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
         lambda_a=0.93, pulse=pulse, dissipation_model='non-Hermitian')
-
-
-@pytest.fixture
-def oct_model(request):
-    datadir = os.path.splitext(request.module.__file__)[0]
-    w1     = 6000.0 # MHz
-    w2     = 5900.0 # MHz
-    wc     = 6200.0 # MHz
-    wd     = 5932.5 # MHz
-    alpha1 = -290.0 # MHz
-    alpha2 = -310.0 # MHz
-    g      =   70.0 # MHz
-    n_qubit = 5
-    n_cavity = 6
-    kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
-    gamma = [0.012, 0.024, 0.033, 10000.0]  # MHz
-    pulse = QDYN.pulse.Pulse.read(os.path.join(datadir, "pulse.guess"))
-    pulse.config_attribs['is_complex'] = True
-    gate = QDYN.gate2q.Gate2Q.read(os.path.join(datadir, 'target_gate.dat'),
-                                   name='O', format='array')
-    return model.transmon_model(
-        n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
-        lambda_a=0.1, pulse=pulse, dissipation_model='non-Hermitian',
-        gate=gate, iter_stop=5)
 
 
 @pytest.fixture
@@ -208,31 +181,6 @@ def test_prop_non_hermitian(non_herm_model, request, tmpdir):
 
     err = 1 - U_actual.closest_unitary().F_avg(U_expected.closest_unitary())
     assert err < 1e-10
-
-
-@pytest.mark.slowtest
-def test_run_oct(oct_model, request, tmpdir):
-    """Test the run_oct wrapper"""
-    rf = str(tmpdir)
-    oct_model.user_data
-
-    oct_model.write_to_runfolder(rf)
-    np.savetxt(
-        os.path.join(rf, 'rwa_vector.dat'),
-        oct_model.rwa_vector, header='rwa vector [MHz]')
-    oct_model.gate.write(os.path.join(rf, 'target_gate.dat'), format='array')
-
-    assert os.path.isfile(os.path.join(rf, 'target_gate.dat'))
-    oct.run_oct(rf, scratch_root=tmpdir)
-    with open(os.path.join(rf, 'oct.log')) as log_fh:
-        print(log_fh.read())
-    iters, J_T = np.genfromtxt(os.path.join(rf, "./oct_iters.dat"),
-                               unpack=True, usecols=(0, 1))
-    assert np.all(
-        iters == np.array(
-            [0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,
-             1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  2.,  3.,  4.,  5.]))
-    assert abs(J_T[-1] - 0.25858613671929997) < 1e-10
 
 
 @pytest.mark.slowtest
