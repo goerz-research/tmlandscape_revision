@@ -102,7 +102,7 @@ def oct_model(request):
     return model.transmon_model(
         n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
         lambda_a=0.1, pulse=pulse, dissipation_model='non-Hermitian',
-        gate=gate, iter_stop=10)
+        gate=gate, iter_stop=5)
 
 
 @pytest.fixture
@@ -210,13 +210,13 @@ def test_prop_non_hermitian(non_herm_model, request, tmpdir):
     assert err < 1e-10
 
 
+@pytest.mark.slowtest
 def test_run_oct(oct_model, request, tmpdir):
     """Test the run_oct wrapper"""
     rf = str(tmpdir)
     oct_model.user_data
 
     oct_model.write_to_runfolder(rf)
-    print("Runfolder: %s" % rf)
     np.savetxt(
         os.path.join(rf, 'rwa_vector.dat'),
         oct_model.rwa_vector, header='rwa vector [MHz]')
@@ -226,10 +226,13 @@ def test_run_oct(oct_model, request, tmpdir):
     oct.run_oct(rf, scratch_root=tmpdir)
     with open(os.path.join(rf, 'oct.log')) as log_fh:
         print(log_fh.read())
-    #output = subprocess.check_output(
-        #['qdyn_prop_gate', '--rho', '--internal-units=GHz_units.txt',
-         #'--gate=%s' % os.path.join(rf, 'target_gate.dat'), rf],
-        #env=env, universal_newlines=True)
+    iters, J_T = np.genfromtxt(os.path.join(rf, "./oct_iters.dat"),
+                               unpack=True, usecols=(0, 1))
+    assert np.all(
+        iters == np.array(
+            [0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,
+             1.,  0.,  1.,  0.,  1.,  0.,  1.,  0.,  1.,  2.,  3.,  4.,  5.]))
+    assert abs(J_T[-1] - 0.25858613671929997) < 1e-10
 
 
 @pytest.mark.slowtest
