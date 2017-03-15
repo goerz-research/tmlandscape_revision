@@ -79,7 +79,7 @@ def get_temp_runfolder(runfolder, scratch_root=None):
 def run_oct(
         runfolder, continue_oct=False, g_a_int_min_initial=1.0e-5,
         g_a_int_max=1.0e-1, g_a_int_converged=1.0e-7, use_threads=True,
-        scratch_root=None, print_stdout=True):
+        scratch_root=None, print_stdout=True, monotonic=True, backtrack=True):
     """Run optimal control on the given runfolder. Adjust lambda_a if
     necessary.
 
@@ -191,15 +191,22 @@ def run_oct(
                         logger.debug("pulse update too small: %g < %g",
                                      g_a_int, g_a_int_min_initial)
                         logger.debug("Kill %d", oct_proc.pid)
-                        oct_proc.kill()
-                        scale_lambda_a(temp_config, 0.5)
-                        reset_pulse(temp_pulse_opt_dat, iteration)
-                        break  # next bad_lambda loop
+                        if backtrack:
+                            oct_proc.kill()
+                            scale_lambda_a(temp_config, 0.5)
+                            reset_pulse(temp_pulse_opt_dat, iteration)
+                            break  # next bad_lambda loop
                     # if the pulse update explodes, we increase lambda_a (and
                     # prevent it from decreasing again)
-                    if (('amplitude exceeds maximum value' in line) or
-                            ('Loss of monotonic convergence' in line) or
-                            (g_a_int > g_a_int_max)):
+                    need_to_increase_lambda = False
+                    if 'amplitude exceeds maximum value' in line:
+                        need_to_increase_lambda = True
+                    if monotonic:
+                        if 'Loss of monotonic convergence' in line:
+                            need_to_increase_lambda = True
+                    if g_a_int > g_a_int_max:
+                        need_to_increase_lambda = True
+                    if need_to_increase_lambda:
                         pulse_explosion = True
                         if "Loss of monotonic convergence" in line:
                             logger.debug("loss of monotonic conversion")
@@ -208,11 +215,12 @@ def run_oct(
                                 logger.debug("g_a_int = %g > %g",
                                              g_a_int, g_a_int_max)
                             logger.debug("pulse explosion")
-                        logger.debug("Kill %d", oct_proc.pid)
-                        oct_proc.kill()
-                        scale_lambda_a(temp_config, 1.25)
-                        reset_pulse(temp_pulse_opt_dat, iteration)
-                        break  # next bad_lambda loop
+                        if backtrack:
+                            logger.debug("Kill %d", oct_proc.pid)
+                            oct_proc.kill()
+                            scale_lambda_a(temp_config, 1.25)
+                            reset_pulse(temp_pulse_opt_dat, iteration)
+                            break  # next bad_lambda loop
                     # if there are no significant pulse changes anymore, we
                     # stop the optimization prematurely
                     if iteration > 10 and g_a_int < g_a_int_converged:
