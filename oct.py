@@ -6,8 +6,23 @@ import logging
 import subprocess as sp
 from glob import glob
 
+import numpy as np
+
 import QDYN
 from QDYN.pulse import Pulse
+
+
+HADAMARD = np.array([[1, 1], [1, -1]], dtype=np.complex128) / np.sqrt(2)
+PHASE = np.array([[1, 0], [0, np.exp(-0.25j*np.pi)]], dtype=np.complex128)
+
+# single qubit target gates
+GATE = {
+    'H_left'  : QDYN.gate2q.Gate2Q(np.kron(HADAMARD, np.eye(2)), name='H_L'),
+    'H_right' : QDYN.gate2q.Gate2Q(np.kron(np.eye(2), HADAMARD), name='H_R'),
+    'Ph_left' : QDYN.gate2q.Gate2Q(np.kron(PHASE, np.eye(2)), name='S_L'),
+    'Ph_right': QDYN.gate2q.Gate2Q(np.kron(np.eye(2), PHASE), name='S_R'),
+    #'SWAP'    : QDYN.gate2q.SWAP,
+}
 
 
 MAX_TRIALS = 200
@@ -64,7 +79,7 @@ def get_temp_runfolder(runfolder, scratch_root=None):
 def run_oct(
         runfolder, continue_oct=False, g_a_int_min_initial=1.0e-5,
         g_a_int_max=1.0e-1, g_a_int_converged=1.0e-7, use_threads=True,
-        scratch_root=None):
+        scratch_root=None, print_stdout=True):
     """Run optimal control on the given runfolder. Adjust lambda_a if
     necessary.
 
@@ -148,6 +163,8 @@ def run_oct(
             g_a_int = 0.0
             while True:  # monitor STDOUT from oct
                 line = oct_proc.stdout.readline()
+                if print_stdout:
+                    print(line, end='')
                 if line != '':
                     stdout.write(line.encode('ascii'))
                     m = re.search(r'^\s*(\d+) \| [\d.E+-]+ \| ([\d.E+-]+) \|',
