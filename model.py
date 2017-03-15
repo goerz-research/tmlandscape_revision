@@ -256,7 +256,7 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
     }
     model.set_oct(pulse_settings, method='krotovpk', J_T_conv=1e-5,
                   max_ram_mb=8000, iter_dat='oct_iters.dat',
-                  iter_stop=iter_stop)
+                  params_file='oct_params.dat', iter_stop=iter_stop)
 
     model.user_data['time_unit'] = 'ns'
     model.user_data['rwa_vector'] = 'rwa_vector.dat'
