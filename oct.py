@@ -101,6 +101,8 @@ def run_oct(
     ham_files = [line.get('filename', None) for line in config_data['ham']]
     psi_files = [line.get('filename', None) for line in config_data['psi']]
     pulse_files = [line.get('filename', None) for line in config_data['pulse']]
+    pulse_files.extend([line.get('oct_spectral_filter', None)
+                        for line in config_data['pulse']])
     user_files = [config_data['user_strings'].get(key, None)
                   for key in ['rwa_vector', 'gate']]
     required_files = [fn for fn in (
