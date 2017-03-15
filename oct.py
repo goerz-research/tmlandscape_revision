@@ -235,7 +235,8 @@ def scale_lambda_a(config_file, factor):
     """Scale lambda_a in the given config file with the given factor"""
     config = QDYN.config.read_config_file(config_file)
     assert len(config['pulse']) == 1
-    config['pulse'][0]['oct_lambda_a'] *= factor
+    config['pulse'][0]['oct_lambda_a'] = float(
+        "%.2e" % (factor * config['pulse'][0]['oct_lambda_a']))
     QDYN.config.write_config(config, config_file)
 
 
