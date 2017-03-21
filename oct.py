@@ -355,3 +355,51 @@ def evaluate_pulse(pulse, gate, wd):
 
     rmtree(rf)
     return err
+
+
+def krotov_from_pulse(gate, wd, pulse, iter_stop=100):
+    rf = get_temp_runfolder('krotov_%s' % gate)
+    w1     = 6000.0 # MHz
+    w2     = 5900.0 # MHz
+    wc     = 6200.0 # MHz
+    alpha1 = -290.0 # MHz
+    alpha2 = -310.0 # MHz
+    g      =   70.0 # MHz
+    n_qubit = 5
+    n_cavity = 6
+    kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
+    gamma = [0.012, 0.024, 0.033, 10000.0]  # MHz
+
+    assert 5000 < wd < 7000
+    assert isinstance(pulse, QDYN.pulse.Pulse)
+
+    pulse.config_attribs['is_complex'] = True
+    pulse.config_attribs['oct_spectral_filter'] = 'filter.dat'
+
+    O = GATE[gate]
+
+    model = transmon_model(
+        n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
+        lambda_a=1.0, pulse=pulse, dissipation_model='non-Hermitian',
+        gate=O, iter_stop=iter_stop)
+    model.write_to_runfolder(rf)
+    np.savetxt(
+        os.path.join(rf, 'rwa_vector.dat'),
+        model.rwa_vector, header='rwa vector [MHz]')
+    O.write(os.path.join(rf, 'target_gate.dat'), format='array')
+
+    def filter(freq):
+        """Filter to ±200 MHz window. Relies on pulse freq_unit being MHz"""
+        return np.abs(freq) < 200
+
+    pulse.write_oct_spectral_filter(
+        os.path.join(rf, 'filter.dat'), filter_func=filter, freq_unit='MHz')
+    print("Runfolder: %s" % rf)
+    run_oct(rf, scratch_root=rf)
+    J_T = np.genfromtxt(os.path.join(rf, "./oct_iters.dat"),
+                        unpack=True, usecols=(1,))
+    print("Runfolder: %s" % rf)
+    opt_pulse = Pulse.read(os.path.join(rf, "pulse.oct.dat"))
+    err = evaluate_pulse(opt_pulse, gate, wd)
+    print("1-F_avg = %.5e" % err)
+    return opt_pulse
