@@ -5,23 +5,28 @@ import uuid
 import logging
 import subprocess as sp
 from glob import glob
+from shutil import rmtree
 
 import numpy as np
 
 import QDYN
 from QDYN.pulse import Pulse
+from QDYN.analytical_pulse import AnalyticalPulse
+from QDYN.prop_gate import get_prop_gate_of_t
+
+from model import transmon_model
 
 
 HADAMARD = np.array([[1, 1], [1, -1]], dtype=np.complex128) / np.sqrt(2)
 PHASE = np.array([[1, 0], [0, np.exp(-0.25j*np.pi)]], dtype=np.complex128)
 
-# single qubit target gates
+# gate targets
 GATE = {
     'H_left'  : QDYN.gate2q.Gate2Q(np.kron(HADAMARD, np.eye(2)), name='H_L'),
     'H_right' : QDYN.gate2q.Gate2Q(np.kron(np.eye(2), HADAMARD), name='H_R'),
     'Ph_left' : QDYN.gate2q.Gate2Q(np.kron(PHASE, np.eye(2)), name='S_L'),
     'Ph_right': QDYN.gate2q.Gate2Q(np.kron(np.eye(2), PHASE), name='S_R'),
-    #'SWAP'    : QDYN.gate2q.SWAP,
+    'BGATE'   : QDYN.gate2q.BGATE,
 }
 
 
@@ -284,3 +289,69 @@ def pulse_is_converged(pulse_file):
         if 'converged' in line:
             return True
     return False
+
+
+def blackman100ns(tgrid, E0):
+    from QDYN.pulse import blackman
+    assert (tgrid[-1] + tgrid[0] - 100) < 1e-10
+    T =  100
+    return E0 * blackman(tgrid, 0, T)
+
+
+AnalyticalPulse.register_formula('blackman100ns', blackman100ns)
+
+
+def evaluate_pulse(pulse, gate, wd):
+    """Evaluate figure of merit for how well the pulse implements the given
+    gate (for simplex). For local gates, the figure of merit is 1-Favg, for
+    BGATE it is J_T_LI + population loss"""
+    assert 5000 < wd < 7000
+    assert isinstance(pulse, QDYN.pulse.Pulse)
+    rf = get_temp_runfolder('evaluate_universal_hs_%s' % gate)
+
+    w1     = 6000.0 # MHz
+    w2     = 5900.0 # MHz
+    wc     = 6200.0 # MHz
+    wd     = wd # MHz
+    alpha1 = -290.0 # MHz
+    alpha2 = -310.0 # MHz
+    g      =   70.0 # MHz
+    n_qubit = 5
+    n_cavity = 6
+    kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
+    gamma = [0.012, 0.024, 0.033, 10000.0]  # MHz
+
+
+    # calculate model
+    O = GATE[gate]
+    J_T = 'sm'
+    if gate == 'BGATE':
+        J_T = 'LI'
+    model = transmon_model(
+        n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
+        lambda_a=1.0, pulse=pulse, dissipation_model='non-Hermitian',
+        gate=O, J_T=J_T, iter_stop=1)
+
+    # write to runfolder
+    model.write_to_runfolder(rf)
+    np.savetxt(
+        os.path.join(rf, 'rwa_vector.dat'),
+        model.rwa_vector, header='rwa vector [MHz]')
+    O.write(os.path.join(rf, 'target_gate.dat'), format='array')
+
+    # propagate
+    env = os.environ.copy()
+    env['OMP_NUM_THREADS'] = '4'
+    stdout = sp.check_output(
+        ['qdyn_prop_gate', '--internal-units=GHz_units.txt', rf], env=env,
+        universal_newlines=True)
+
+    # evaluate error
+    for U_t in get_prop_gate_of_t(os.path.join(rf, 'U_over_t.dat')):
+        U = U_t
+    err = 1-U.F_avg(O)
+    if gate == 'BGATE':
+        err = QDYN.weyl.J_T_LI(O, U) + U.pop_loss()
+
+    rmtree(rf)
+    return err
