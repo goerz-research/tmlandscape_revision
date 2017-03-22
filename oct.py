@@ -33,6 +33,14 @@ GATE = {
 MAX_TRIALS = 200
 
 
+w1     = 6000.0  # MHz
+w2     = 5900.0  # MHz
+wc     = 6200.0  # MHz
+alpha1 = -290.0  # MHz
+alpha2 = -310.0  # MHz
+g      =   70.0  # MHz
+
+
 def reset_pulse(pulse_dat, iteration):
     """Reset pulse_dat at the given iteration to the last available snapshot,
     assuming that snapshots are available using the same name as pulse_dat,
@@ -309,14 +317,6 @@ def get_U(pulse, wd, gate=None, J_T=None, dissipation=True):
     assert 5000 < wd < 7000
     assert isinstance(pulse, QDYN.pulse.Pulse)
     rf = get_temp_runfolder('evaluate_universal_hs')
-
-    w1     = 6000.0 # MHz
-    w2     = 5900.0 # MHz
-    wc     = 6200.0 # MHz
-    wd     = wd # MHz
-    alpha1 = -290.0 # MHz
-    alpha2 = -310.0 # MHz
-    g      =   70.0 # MHz
     n_qubit = 5
     n_cavity = 6
     kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
@@ -363,6 +363,50 @@ def get_U(pulse, wd, gate=None, J_T=None, dissipation=True):
     return U
 
 
+def evaluate_pulse_rho(pulse, gate, wd, n_qubit=5, n_cavity=6):
+    """Propagate pulse in Liouville space"""
+    n_qubit = n_qubit
+    n_cavity = n_cavity
+    kappa = 0.05 # MHz
+    gamma = 0.012 # MHz
+
+    rf = get_temp_runfolder('evaluate_universal_rho')
+
+    if isinstance(gate, str):
+        gate = GATE[gate]
+    assert isinstance(gate, QDYN.gate2q.Gate2Q)
+
+    print("preprocessing in %s" % rf)
+    model = transmon_model(
+        n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
+        lambda_a=1.0, pulse=pulse, dissipation_model='dissipator',
+        gate=gate)
+
+    # write to runfolder
+    model.write_to_runfolder(rf)
+    np.savetxt(
+        os.path.join(rf, 'rwa_vector.dat'),
+        model.rwa_vector, header='rwa vector [MHz]')
+    gate.write(os.path.join(rf, 'target_gate.dat'), format='array')
+
+    # propagate
+    print("starting propagation in %s" % rf)
+    env = os.environ.copy()
+    env['OMP_NUM_THREADS'] = '16'
+    try:
+        stdout = sp.check_output(
+            ['qdyn_prop_gate', '--rho', '--internal-units=GHz_units.txt', rf],
+            env=env, universal_newlines=True)
+    except sp.CalledProcessError as exc_info:
+        from IPython.core.debugger import Tracer
+        Tracer()()
+        print(exc_info)
+    err = float(re.search(r'1-F_avg\(U, O\)\s*=\s*([Ee.0-9+-]*)',
+                          stdout).group(1))
+    print("err_avg = %.4e" % err)
+    return err
+
+
 def evaluate_pulse(pulse, gate, wd, dissipation=True):
     """Evaluate figure of merit for how well the pulse implements the given
     gate (for simplex). For local gates, the figure of merit is 1-Favg, for
@@ -386,12 +430,6 @@ def evaluate_pulse(pulse, gate, wd, dissipation=True):
 
 
 def krotov_from_pulse(gate, wd, pulse, iter_stop=100, dissipation=True):
-    w1     = 6000.0 # MHz
-    w2     = 5900.0 # MHz
-    wc     = 6200.0 # MHz
-    alpha1 = -290.0 # MHz
-    alpha2 = -310.0 # MHz
-    g      =   70.0 # MHz
     n_qubit = 5
     n_cavity = 6
     kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
