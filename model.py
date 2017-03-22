@@ -1,6 +1,7 @@
 """Hamiltonian of the Transmon Model"""
 
 import itertools
+from collections import OrderedDict
 
 import sympy
 import qutip
@@ -246,13 +247,13 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
 
     # OCT
     pulse_settings = {
-        pulse: {
-            'oct_outfile': 'pulse.oct.dat',
-            'oct_lambda_a': lambda_a, 'oct_lambda_intens': 0.0,
-            'oct_increase_factor': 5.0, 'oct_shape': 'flattop',
-            'shape_t_start': 0.0, 't_rise': UnitFloat(2.0, 'ns'),
-            'shape_t_stop': T, 't_fall': UnitFloat(2.0, 'ns'),
-            }
+        pulse: OrderedDict([
+            ('oct_outfile', 'pulse.oct.dat'),
+            ('oct_lambda_a', lambda_a), ('oct_lambda_intens', 0.0),
+            ('oct_increase_factor', 5.0), ('oct_shape', 'flattop'),
+            ('shape_t_start', 0.0), ('t_rise', UnitFloat(2.0, 'ns')),
+            ('shape_t_stop', T), ('t_fall', UnitFloat(2.0, 'ns')),
+            ])
     }
     model.set_oct(pulse_settings, method='krotovpk', J_T_conv=1e-5,
                   max_ram_mb=8000, iter_dat='oct_iters.dat',
