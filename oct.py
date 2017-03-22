@@ -301,7 +301,7 @@ def blackman100ns(tgrid, E0):
 AnalyticalPulse.register_formula('blackman100ns', blackman100ns)
 
 
-def get_U(pulse, wd, gate=None, J_T=None):
+def get_U(pulse, wd, gate=None, J_T=None, dissipation=True):
     """Propagate pulse in the given rotating frame, using the non-Hermitian
     Schrödinger equation, and return the resulting (non-unitary, due to
     population loss) gate U"""
@@ -321,6 +321,9 @@ def get_U(pulse, wd, gate=None, J_T=None):
     n_cavity = 6
     kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
     gamma = [0.012, 0.024, 0.033, 10000.0]  # MHz
+    if not dissipation:
+        kappa = list(np.arange(n_cavity) * 0.0)[1:-1] + [0.0, ]  # MHz
+        gamma = [0.0, 0.0, 0.0, 0.0]  # MHz
 
     if gate is None:
         gate = GATE['BGATE']
@@ -360,11 +363,10 @@ def get_U(pulse, wd, gate=None, J_T=None):
     return U
 
 
-def evaluate_pulse(pulse, gate, wd):
+def evaluate_pulse(pulse, gate, wd, dissipation=True):
     """Evaluate figure of merit for how well the pulse implements the given
     gate (for simplex). For local gates, the figure of merit is 1-Favg, for
     BGATE it is J_T_LI + population loss"""
-
 
     # calculate model
     if isinstance(gate, QDYN.gate2q.Gate2Q):
@@ -375,7 +377,7 @@ def evaluate_pulse(pulse, gate, wd):
     J_T = 'sm'
     if gate == 'BGATE':
         J_T = 'LI'
-    U = get_U(pulse, wd, gate=O, J_T=J_T)
+    U = get_U(pulse, wd, gate=O, J_T=J_T, dissipation=dissipation)
     err = 1-U.F_avg(O)
     if gate == 'BGATE':
         err = QDYN.weyl.J_T_LI(O, U) + U.pop_loss()
