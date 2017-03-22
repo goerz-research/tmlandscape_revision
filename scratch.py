@@ -2,6 +2,7 @@ from scipy.optimize import minimize
 from QDYN.analytical_pulse import AnalyticalPulse
 from math import atanh, tanh
 
+from oct import *
 
 def u_tanh(v, v_min, v_max):
     return atanh((2 * v - (v_max + v_min)) / (v_max - v_min))
