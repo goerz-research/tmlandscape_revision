@@ -51,9 +51,10 @@ def simplex_E0(gate, wd, E0_0, T=100):
     return res.x
 
 
-def krotov_from_blackman(gate, wd, E0, T=100, iter_stop=100):
+def krotov_from_blackman(gate, wd, E0, T=100, iter_stop=100, dissipation=True):
     from oct import krotov_from_pulse
     pulse = AnalyticalPulse(
             "blackman100ns", T=T, nt=2000, time_unit='ns',
             ampl_unit='MHz', parameters={'E0': E0}).to_num_pulse()
-    return krotov_from_pulse(gate, wd, pulse, iter_stop=iter_stop)
+    return krotov_from_pulse(gate, wd, pulse, iter_stop=iter_stop,
+                             dissipation=dissipation)

@@ -308,7 +308,7 @@ def get_U(pulse, wd, gate=None, J_T=None):
 
     assert 5000 < wd < 7000
     assert isinstance(pulse, QDYN.pulse.Pulse)
-    rf = get_temp_runfolder('evaluate_universal_hs_%s' % gate)
+    rf = get_temp_runfolder('evaluate_universal_hs')
 
     w1     = 6000.0 # MHz
     w2     = 5900.0 # MHz
@@ -383,7 +383,7 @@ def evaluate_pulse(pulse, gate, wd):
     return err
 
 
-def krotov_from_pulse(gate, wd, pulse, iter_stop=100):
+def krotov_from_pulse(gate, wd, pulse, iter_stop=100, dissipation=True):
     w1     = 6000.0 # MHz
     w2     = 5900.0 # MHz
     wc     = 6200.0 # MHz
@@ -394,6 +394,9 @@ def krotov_from_pulse(gate, wd, pulse, iter_stop=100):
     n_cavity = 6
     kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
     gamma = [0.012, 0.024, 0.033, 10000.0]  # MHz
+    if not dissipation:
+        kappa = list(np.arange(n_cavity) * 0.0)[1:-1] + [10000.0, ]  # MHz
+        gamma = [0.0, 0.0, 0.0, 10000.0]  # MHz
 
     assert 5000 < wd < 7000
     assert isinstance(pulse, QDYN.pulse.Pulse)
