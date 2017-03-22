@@ -301,10 +301,11 @@ def blackman100ns(tgrid, E0):
 AnalyticalPulse.register_formula('blackman100ns', blackman100ns)
 
 
-def evaluate_pulse(pulse, gate, wd):
-    """Evaluate figure of merit for how well the pulse implements the given
-    gate (for simplex). For local gates, the figure of merit is 1-Favg, for
-    BGATE it is J_T_LI + population loss"""
+def get_U(pulse, wd, gate=None, J_T=None):
+    """Propagate pulse in the given rotating frame, using the non-Hermitian
+    Schrödinger equation, and return the resulting (non-unitary, due to
+    population loss) gate U"""
+
     assert 5000 < wd < 7000
     assert isinstance(pulse, QDYN.pulse.Pulse)
     rf = get_temp_runfolder('evaluate_universal_hs_%s' % gate)
@@ -321,44 +322,68 @@ def evaluate_pulse(pulse, gate, wd):
     kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
     gamma = [0.012, 0.024, 0.033, 10000.0]  # MHz
 
+    if gate is None:
+        gate = GATE['BGATE']
+    assert isinstance(gate, QDYN.gate2q.Gate2Q)
+    if J_T is None:
+        J_T = 'sm'
 
-    # calculate model
-    O = GATE[gate]
-    J_T = 'sm'
-    if gate == 'BGATE':
-        J_T = 'LI'
     model = transmon_model(
         n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
         lambda_a=1.0, pulse=pulse, dissipation_model='non-Hermitian',
-        gate=O, J_T=J_T, iter_stop=1)
+        gate=gate, J_T=J_T, iter_stop=1)
 
     # write to runfolder
     model.write_to_runfolder(rf)
     np.savetxt(
         os.path.join(rf, 'rwa_vector.dat'),
         model.rwa_vector, header='rwa vector [MHz]')
-    O.write(os.path.join(rf, 'target_gate.dat'), format='array')
+    gate.write(os.path.join(rf, 'target_gate.dat'), format='array')
 
     # propagate
     env = os.environ.copy()
     env['OMP_NUM_THREADS'] = '4'
-    stdout = sp.check_output(
-        ['qdyn_prop_gate', '--internal-units=GHz_units.txt', rf], env=env,
-        universal_newlines=True)
+    try:
+        stdout = sp.check_output(
+            ['qdyn_prop_gate', '--internal-units=GHz_units.txt', rf], env=env,
+            universal_newlines=True)
+    except sp.CalledProcessError as exc_info:
+        from IPython.core.debugger import Tracer
+        Tracer()()
+        print(exc_info)
 
     # evaluate error
     for U_t in get_prop_gate_of_t(os.path.join(rf, 'U_over_t.dat')):
         U = U_t
+    rmtree(rf)
+
+    return U
+
+
+def evaluate_pulse(pulse, gate, wd):
+    """Evaluate figure of merit for how well the pulse implements the given
+    gate (for simplex). For local gates, the figure of merit is 1-Favg, for
+    BGATE it is J_T_LI + population loss"""
+
+
+    # calculate model
+    if isinstance(gate, QDYN.gate2q.Gate2Q):
+        O = gate
+        gate = 'O'
+    else:
+        O = GATE[gate]
+    J_T = 'sm'
+    if gate == 'BGATE':
+        J_T = 'LI'
+    U = get_U(pulse, wd, gate=O, J_T=J_T)
     err = 1-U.F_avg(O)
     if gate == 'BGATE':
         err = QDYN.weyl.J_T_LI(O, U) + U.pop_loss()
 
-    rmtree(rf)
     return err
 
 
 def krotov_from_pulse(gate, wd, pulse, iter_stop=100):
-    rf = get_temp_runfolder('krotov_%s' % gate)
     w1     = 6000.0 # MHz
     w2     = 5900.0 # MHz
     wc     = 6200.0 # MHz
@@ -376,12 +401,22 @@ def krotov_from_pulse(gate, wd, pulse, iter_stop=100):
     pulse.config_attribs['is_complex'] = True
     pulse.config_attribs['oct_spectral_filter'] = 'filter.dat'
 
-    O = GATE[gate]
+    if isinstance(gate, QDYN.gate2q.Gate2Q):
+        rf = get_temp_runfolder('krotov_O')
+        O = gate
+        gate = 'O'
+    else:
+        rf = get_temp_runfolder('krotov_%s' % gate)
+        O = GATE[gate]
+
+    J_T = 'sm'
+    if gate == 'BGATE':
+        J_T = 'LI'
 
     model = transmon_model(
         n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
         lambda_a=1.0, pulse=pulse, dissipation_model='non-Hermitian',
-        gate=O, iter_stop=iter_stop)
+        gate=O, iter_stop=iter_stop, J_T=J_T)
     model.write_to_runfolder(rf)
     np.savetxt(
         os.path.join(rf, 'rwa_vector.dat'),
@@ -395,9 +430,7 @@ def krotov_from_pulse(gate, wd, pulse, iter_stop=100):
     pulse.write_oct_spectral_filter(
         os.path.join(rf, 'filter.dat'), filter_func=filter, freq_unit='MHz')
     print("Runfolder: %s" % rf)
-    run_oct(rf, scratch_root=rf)
-    J_T = np.genfromtxt(os.path.join(rf, "./oct_iters.dat"),
-                        unpack=True, usecols=(1,))
+    run_oct(rf, scratch_root=rf, monotonic=False)
     print("Runfolder: %s" % rf)
     opt_pulse = Pulse.read(os.path.join(rf, "pulse.oct.dat"))
     err = evaluate_pulse(opt_pulse, gate, wd)
