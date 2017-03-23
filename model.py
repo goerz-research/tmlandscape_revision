@@ -270,4 +270,6 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
         model.gate = gate
         model.user_data['J_T'] = 'J_T_%s' % J_T
         model.user_data['write_optimized_gate'] = True
+    if J_T in ['PE', 'LI']:
+        model.user_data['w_unitary'] = 0.9
     return model

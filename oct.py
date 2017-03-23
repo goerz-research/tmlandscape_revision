@@ -167,7 +167,6 @@ def run_oct(
             env['OMP_NUM_THREADS'] = '1'
             if use_threads:
                 env['OMP_NUM_THREADS'] = '4'
-            # TODO: the proper process
             oct_proc = sp.Popen(
                 ['qdyn_optimize', '--internal-units=GHz_units.txt', '.'],
                 cwd=temp_runfolder, env=env, stdout=sp.PIPE,
