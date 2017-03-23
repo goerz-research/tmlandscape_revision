@@ -5,7 +5,7 @@ import uuid
 import logging
 import subprocess as sp
 from glob import glob
-from shutil import rmtree
+from shutil import rmtree, copytree
 
 import numpy as np
 
@@ -309,7 +309,8 @@ def blackman100ns(tgrid, E0):
 AnalyticalPulse.register_formula('blackman100ns', blackman100ns)
 
 
-def get_U(pulse, wd, gate=None, J_T=None, dissipation=True):
+def get_U(pulse, wd, gate=None, J_T=None, dissipation=True,
+        keep_runfolder=None):
     """Propagate pulse in the given rotating frame, using the non-Hermitian
     Schrödinger equation, and return the resulting (non-unitary, due to
     population loss) gate U"""
@@ -358,6 +359,10 @@ def get_U(pulse, wd, gate=None, J_T=None, dissipation=True):
     # evaluate error
     for U_t in get_prop_gate_of_t(os.path.join(rf, 'U_over_t.dat')):
         U = U_t
+    if keep_runfolder is not None:
+        if os.path.isdir(keep_runfolder):
+            rmtree(rf)
+        copytree(rf, keep_runfolder)
     rmtree(rf)
 
     return U
