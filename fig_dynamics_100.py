@@ -60,22 +60,22 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
 
     errors = { # errors obtained from *Liouville space* propagation, see
                # ./propagate_universal/rho folder
-            'H_L': 4.46e-3,
-            'H_R': 5.03e-3,
-            'S_L': 4.79e-3,
-            'S_R': 4.07e-3,
-            'PE':  4.70e-3,
+            'H_L': 7.2e-3,
+            'H_R': 7.3e-3,
+            'S_L': 7.4e-3,
+            'S_R': 7.7e-3,
+            'PE':  7.4e-3,
     }
 
     w_center = 5932.5
     w_1_dressed = 5982.5
     w_2_dressed = 5882.4
     wd = {
-        'H_L': w_1_dressed,
+        'H_L': w_2_dressed,
         'H_R': w_2_dressed,
-        'S_L': 5932.5,
-        'S_R': 5932.5,
-        'PE':  5932.5,
+        'S_L': w_2_dressed,
+        'S_R': w_2_dressed,
+        'PE':  w_center,
     }
 
     polar_axes = []
@@ -167,10 +167,10 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
         set_axis(ax_phase, 'x', 0, 100, step=20, minor=2, label='',
                  ticklabels=False, labelpad=1)
         if i_tgt == 0:
-            set_axis(ax_phase, 'y', -16, 4, range=(-15, 5), step=4, minor=2,
+            set_axis(ax_phase, 'y', -8, 8, range=(-7, 9.9), step=4, minor=2,
                     label='', drop_ticklabels=[-1, ])
         else:
-            set_axis(ax_phase, 'y', -16, 16, range=(-14.9, 4.9), step=4,
+            set_axis(ax_phase, 'y', -8, 8, range=(-7, 9.9), step=4,
                      minor=2, label='', ticklabels=False)
 
         # pulse
@@ -184,9 +184,9 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
                  label='', ticklabels=False,
                  labelpad=1)
         if i_tgt == 0:
-            set_axis(ax_pulse, 'y', 0, 300, step=100, minor=2, label='')
+            set_axis(ax_pulse, 'y', 0, 200, step=100, minor=5, label='')
         else:
-            set_axis(ax_pulse, 'y', 0, 300, step=100, minor=2, label='',
+            set_axis(ax_pulse, 'y', 0, 200, step=100, minor=5, label='',
                      ticklabels=False)
 
         # logical subspace population
@@ -209,10 +209,10 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
             set_axis(ax_log, 'x', 0, 100, step=20, minor=2, label='time (ns)',
                     labelpad=1)
         if i_tgt == 0:
-            set_axis(ax_log, 'y', 0, 0.3, range=(0,0.25), step=0.1, minor=2,
+            set_axis(ax_log, 'y', 0, 0.1, range=(0,0.12), step=0.05, minor=5,
                      label='')
         else:
-            set_axis(ax_log, 'y', 0, 0.3, range=(0,0.25), step=0.1, minor=2,
+            set_axis(ax_log, 'y', 0, 0.1, range=(0,0.12), step=0.05, minor=5,
                      label='', ticklabels=False)
 
         # population dynamics
@@ -237,7 +237,7 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
 
         phase, r = split_polar(
             get_prop_gate_of_t(join(universal_rf[tgt], 'U_over_t.dat')),
-            get_prop_gate_of_t(join(field_free_rf, 'U_over_t.dat')))
+            get_prop_gate_of_t(join(field_free_rf[tgt], 'U_over_t.dat')))
 
         dyn_h_offset = 0.5*(w - 2*dyn_width)
         pos00 = [(left_offset+dyn_h_offset)/fig_width,
@@ -375,9 +375,9 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
 
 def latex_exp(f):
     """Convert float to scientific notation in LaTeX"""
-    str = "%.2e" % f
+    str = "%.1e" % f
     mantissa, exponent = str.split("e")
-    return r'%.2f \times 10^{%d}' % (float(mantissa), int(exponent))
+    return r'%.1f \times 10^{%d}' % (float(mantissa), int(exponent))
 
 
 def main(argv=None):
@@ -395,7 +395,13 @@ def main(argv=None):
         'S_R': universal_root+'Ph_right',
         'PE':  universal_root+'BGATE'
     }
-    field_free_rf = universal_root+'/fieldfree'
+    field_free_rf = {
+        'H_L': universal_root+'fieldfree_2',
+        'H_R': universal_root+'fieldfree_2',
+        'S_L': universal_root+'fieldfree_2',
+        'S_R': universal_root+'fieldfree_2',
+        'PE':  universal_root+'fieldfree_c'
+    }
     # Fig 5
     generate_universal_pulse_plot(universal_rf, field_free_rf,
                                   outfile='fig5.pdf')
