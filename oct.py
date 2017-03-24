@@ -167,6 +167,8 @@ def run_oct(
             env['OMP_NUM_THREADS'] = '1'
             if use_threads:
                 env['OMP_NUM_THREADS'] = '4'
+                if int(use_threads) > 1:
+                    env['OMP_NUM_THREADS'] = '%d' % int(use_threads)
             oct_proc = sp.Popen(
                 ['qdyn_optimize', '--internal-units=GHz_units.txt', '.'],
                 cwd=temp_runfolder, env=env, stdout=sp.PIPE,
@@ -360,7 +362,7 @@ def get_U(pulse, wd, gate=None, J_T=None, dissipation=True,
         U = U_t
     if keep_runfolder is not None:
         if os.path.isdir(keep_runfolder):
-            rmtree(rf)
+            rmtree(keep_runfolder)
         copytree(rf, keep_runfolder)
     rmtree(rf)
 
@@ -433,7 +435,9 @@ def evaluate_pulse(pulse, gate, wd, dissipation=True):
     return err
 
 
-def krotov_from_pulse(gate, wd, pulse, iter_stop=100, dissipation=True):
+def krotov_from_pulse(gate, wd, pulse, iter_stop=100, dissipation=True,
+        ens_pulse_scale=None):
+    """Run a Krotov optimization from the given guess pulse"""
     n_qubit = 5
     n_cavity = 6
     kappa = list(np.arange(n_cavity) * 0.05)[1:-1] + [10000.0, ]  # MHz
@@ -460,10 +464,13 @@ def krotov_from_pulse(gate, wd, pulse, iter_stop=100, dissipation=True):
     if gate == 'BGATE':
         J_T = 'LI'
 
+    use_threads = True
+    if ens_pulse_scale is not None:
+        use_threads = (len(ens_pulse_scale) + 1) * 4
     model = transmon_model(
         n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
         lambda_a=1.0, pulse=pulse, dissipation_model='non-Hermitian',
-        gate=O, iter_stop=iter_stop, J_T=J_T)
+        gate=O, iter_stop=iter_stop, J_T=J_T, ens_pulse_scale=ens_pulse_scale)
     model.write_to_runfolder(rf)
     np.savetxt(
         os.path.join(rf, 'rwa_vector.dat'),
@@ -477,7 +484,7 @@ def krotov_from_pulse(gate, wd, pulse, iter_stop=100, dissipation=True):
     pulse.write_oct_spectral_filter(
         os.path.join(rf, 'filter.dat'), filter_func=filter, freq_unit='MHz')
     print("Runfolder: %s" % rf)
-    run_oct(rf, scratch_root=rf, monotonic=False)
+    run_oct(rf, scratch_root=rf, monotonic=False, use_threads=use_threads)
     print("Runfolder: %s" % rf)
     opt_pulse = Pulse.read(os.path.join(rf, "pulse.oct.dat"))
     err = evaluate_pulse(opt_pulse, gate, wd)

@@ -121,7 +121,7 @@ def pick_logical_basis(H0_num, bare_basis):
 
 def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
         gamma, kappa, lambda_a, pulse, dissipation_model='dissipator',
-        gate=None, J_T='sm', iter_stop=1000):
+        gate=None, J_T='sm', iter_stop=1000, ens_pulse_scale=None):
     """Return a QDYN model for propagation and oct of a 2-transmon system
 
     Args:
@@ -223,6 +223,22 @@ def transmon_model(n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g,
                   op_type='dipole', sparsity_model='indexed')
     model.add_ham(H1_num.dag(), pulse=pulse, op_unit='dimensionless',
                   op_type='dipole', conjg_pulse=True, sparsity_model='indexed')
+    if ens_pulse_scale is not None:
+        pulse.config_attribs['label'] = ''
+        ens_labels = []
+        for i, f in enumerate(ens_pulse_scale):
+            ens_label = 'gen%d' % (i+1)
+            model.add_ham(H0_num, op_unit='MHz', op_type='potential',
+                          label=ens_label)
+            model.add_ham(f*H1_num, pulse=pulse, op_unit='dimensionless',
+                          op_type='dipole', sparsity_model='indexed',
+                          label=ens_label)
+            model.add_ham(f*H1_num.dag(), pulse=pulse, op_unit='dimensionless',
+                          op_type='dipole', conjg_pulse=True,
+                          sparsity_model='indexed', label=ens_label)
+            ens_labels.append(ens_label)
+        model.user_data['ensemble_gens'] = ",".join(ens_labels)
+
 
     model.set_propagation(T=T, nt=nt, t0=t0, time_unit='ns',
                           prop_method='newton')
