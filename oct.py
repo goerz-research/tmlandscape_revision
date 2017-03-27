@@ -435,8 +435,9 @@ def evaluate_pulse(pulse, gate, wd, dissipation=True):
     return err
 
 
-def krotov_from_pulse(gate, wd, pulse, iter_stop=100, dissipation=True,
-        ens_pulse_scale=None):
+def krotov_from_pulse(
+        gate, wd, pulse, iter_stop=100, dissipation=True,
+        ens_pulse_scale=None, freq_window=200):
     """Run a Krotov optimization from the given guess pulse"""
     n_qubit = 5
     n_cavity = 6
@@ -450,7 +451,8 @@ def krotov_from_pulse(gate, wd, pulse, iter_stop=100, dissipation=True,
     assert isinstance(pulse, QDYN.pulse.Pulse)
 
     pulse.config_attribs['is_complex'] = True
-    pulse.config_attribs['oct_spectral_filter'] = 'filter.dat'
+    if freq_window is not None:
+        pulse.config_attribs['oct_spectral_filter'] = 'filter.dat'
 
     if isinstance(gate, QDYN.gate2q.Gate2Q):
         rf = get_temp_runfolder('krotov_O')
@@ -478,11 +480,13 @@ def krotov_from_pulse(gate, wd, pulse, iter_stop=100, dissipation=True,
     O.write(os.path.join(rf, 'target_gate.dat'), format='array')
 
     def filter(freq):
-        """Filter to ±200 MHz window. Relies on pulse freq_unit being MHz"""
-        return np.abs(freq) < 200
+        """Filter to ± `freq_window` MHz window."""
+        return np.abs(freq) < freq_window
 
-    pulse.write_oct_spectral_filter(
-        os.path.join(rf, 'filter.dat'), filter_func=filter, freq_unit='MHz')
+    if freq_window is not None:
+        pulse.write_oct_spectral_filter(
+            os.path.join(rf, 'filter.dat'), filter_func=filter,
+            freq_unit='MHz')
     print("Runfolder: %s" % rf)
     run_oct(rf, scratch_root=rf, monotonic=False, use_threads=use_threads)
     print("Runfolder: %s" % rf)
