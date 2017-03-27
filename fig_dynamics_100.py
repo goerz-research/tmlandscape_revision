@@ -29,21 +29,19 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
     fig_height   = 14.2
     spec_offset  =  0.7
     phase_deriv_offset =  2.95
-    phase_offset =  4.45
-    pulse_offset = 5.95
-    phase_h       =  1.5
+    pulse_offset = 4.45
     phase_deriv_h =  1.5
-    label_offset = 14.0
-    error_offset = 13.6
+    label_offset = 12.5
+    error_offset = 12.1
     spec_h       =  1.5
     pulse_h      =  1.5
     left_margin  =  1.4
     right_margin =  0.25
     gap          =  0.0 # horizontal gap between panels
     y_label_offset  = 0.07
-    log_offset = 8.3
+    log_offset = 6.8
     log_h = 1.0
-    dyn_offset = 10.0
+    dyn_offset = 8.5
     dyn_width = 1.55
 
     fig = new_figure(fig_width, fig_height, style=STYLE)
@@ -159,19 +157,6 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
                                color=get_color('green'))
         ax_phase_deriv.axhline(y=(delta1+alpha1), ls='dotted',
                                color=get_color('orange'))
-
-        pos = [left_offset/fig_width, phase_offset/fig_height,
-               w/fig_width, phase_h/fig_height]
-        ax_phase = fig.add_axes(pos)
-        ax_phase.plot(p.tgrid, p.phase(unwrap=True) / np.pi)
-        set_axis(ax_phase, 'x', 0, 100, step=20, minor=2, label='',
-                 ticklabels=False, labelpad=1)
-        if i_tgt == 0:
-            set_axis(ax_phase, 'y', -8, 8, range=(-7, 9.9), step=4, minor=2,
-                    label='', drop_ticklabels=[-1, ])
-        else:
-            set_axis(ax_phase, 'y', -8, 8, range=(-7, 9.9), step=4,
-                     minor=2, label='', ticklabels=False)
 
         # pulse
         pos = [left_offset/fig_width, pulse_offset/fig_height,
@@ -349,10 +334,6 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
     fig.text(y_label_offset/fig_width,
                 (spec_offset+0.5*spec_h)/fig_height,
                 r'$\vert F(\epsilon) \vert$ (arb. un.)',
-                rotation='vertical', va='center', ha='left')
-    fig.text(y_label_offset/fig_width,
-                (phase_offset+0.5*phase_h)/fig_height,
-                r'$\phi$ ($\pi$)',
                 rotation='vertical', va='center', ha='left')
     fig.text(y_label_offset/fig_width,
                 (phase_deriv_offset+0.5*phase_deriv_h)/fig_height,
