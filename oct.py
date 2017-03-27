@@ -440,7 +440,8 @@ def evaluate_pulse(pulse, gate, wd, dissipation=True):
 
 def krotov_from_pulse(
         gate, wd, pulse, iter_stop=100, dissipation=True,
-        ens_pulse_scale=None, freq_window=200):
+        ens_pulse_scale=None, freq_window=200, lambda_a=1.0,
+        g_a_int_converged=1.0e-7):
     """Run a Krotov optimization from the given guess pulse"""
     n_qubit = 5
     n_cavity = 6
@@ -474,7 +475,7 @@ def krotov_from_pulse(
         use_threads = (len(ens_pulse_scale) + 1) * 4
     model = transmon_model(
         n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
-        lambda_a=1.0, pulse=pulse, dissipation_model='non-Hermitian',
+        lambda_a=lambda_a, pulse=pulse, dissipation_model='non-Hermitian',
         gate=O, iter_stop=iter_stop, J_T=J_T, ens_pulse_scale=ens_pulse_scale)
     model.write_to_runfolder(rf)
     np.savetxt(
@@ -491,10 +492,11 @@ def krotov_from_pulse(
             os.path.join(rf, 'filter.dat'), filter_func=filter,
             freq_unit='MHz')
     print("Runfolder: %s" % rf)
-    run_oct(rf, scratch_root=rf, monotonic=False, use_threads=use_threads)
+    run_oct(rf, scratch_root=rf, monotonic=False, use_threads=use_threads,
+            g_a_int_converged=g_a_int_converged)
     print("Runfolder: %s" % rf)
     opt_pulse = Pulse.read(os.path.join(rf, "pulse.oct.dat"))
-    err = evaluate_pulse(opt_pulse, gate, wd)
+    err = evaluate_pulse(opt_pulse, O, wd, dissipation=dissipation)
     print("1-F_avg = %.5e" % err)
     return opt_pulse
 
