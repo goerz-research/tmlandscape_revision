@@ -38,7 +38,14 @@ def render_eqnarray(
                  horizontalalignment='left')
 
 
-def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
+class AttrDict(dict):
+    def __init__(self, *args, **kwargs):
+        super(AttrDict, self).__init__(*args, **kwargs)
+        self.__dict__ = self
+
+
+def render_universal_pulse_plot(universal_rf, field_free_rf, errors_diss,
+        errors_nodiss, wd, axes_info):
     fig_width    = 18.0
     fig_height   = 13.2
     spec_offset  =  0.7
@@ -70,32 +77,7 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
             'PE': r'BGATE',
     }
 
-    errors_diss = {
-            'H_L': 7.2e-3,
-            'H_R': 7.3e-3,
-            'S_L': 7.4e-3,
-            'S_R': 7.7e-3,
-            'PE':  7.4e-3,
-    }
-
-    errors_nodiss = {
-            'H_L': 7.2e-3,
-            'H_R': 7.3e-3,
-            'S_L': 7.4e-3,
-            'S_R': 7.7e-3,
-            'PE':  7.4e-3,
-    }
-
     w_center = 5932.5
-    w_1_dressed = 5982.5
-    w_2_dressed = 5882.4
-    wd = {
-        'H_L': w_2_dressed,
-        'H_R': w_2_dressed,
-        'S_L': w_2_dressed,
-        'S_R': w_2_dressed,
-        'PE':  w_center,
-    }
 
     polar_axes = []
 
@@ -127,8 +109,9 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
                w/fig_width, spec_h/fig_height]
         ax_spec = fig.add_axes(pos)
         ax_spec.plot(freq, 1.1*spectrum, label='spectrum')
-        set_axis(ax_spec, 'x', -100, 100, range=(-190, 190), step=100, minor=10,
-                 label=r'$\Delta f$ (MHz)', labelpad=1)
+        a = axes_info['spec']['x']
+        set_axis(ax_spec, 'x', a.start, a.stop, range=a.range, step=a.step,
+                 minor=a.minor, label=r'$\Delta f$ (MHz)', labelpad=1)
         offset = w_center - wd[tgt]
         delta1 = offset + 0.5 * (49.82 + 50.11) # MHz
         delta2 = offset + 0.5 * (-50.25 -49.95) # MHz
@@ -150,11 +133,13 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
                         color=get_color('green'))
         ax_spec.axvline(x=(delta1+alpha1), ls='dotted',
                         color=get_color('orange'))
+        a = axes_info['spec']['y']
         if i_tgt == 0:
-            set_axis(ax_spec, 'y', 0, 100, step=50, minor=2, label='')
+            set_axis(ax_spec, 'y', a.start, a.stop, range=a.range, step=a.step,
+                     minor=a.minor, label='')
         else:
-            set_axis(ax_spec, 'y', 0, 100, step=50, minor=2, label='',
-                     ticklabels=False)
+            set_axis(ax_spec, 'y', a.start, a.stop, range=a.range, step=a.step,
+                     minor=a.minor, label='', ticklabels=False)
 
         # phase
         pos = [left_offset/fig_width, phase_deriv_offset/fig_height,
@@ -162,18 +147,21 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
         ax_phase_deriv = fig.add_axes(pos)
         ax_phase_deriv.plot(p.tgrid, p.phase(unwrap=True, s=1000,
                             derivative=True))
+        a = axes_info['time']
         if i_tgt < 4:
-            set_axis(ax_phase_deriv, 'x', 0, 100, step=20, minor=2,
-                     label='time (ns)', labelpad=1, drop_ticklabels=[-1, ])
+            set_axis(ax_phase_deriv, 'x', a.start, a.stop, step=a.step,
+                     minor=a.minor, label='time (ns)', labelpad=1,
+                     drop_ticklabels=[-1, ])
         else:
-            set_axis(ax_phase_deriv, 'x', 0, 100, step=20, minor=2,
-                     label='time (ns)', labelpad=1)
+            set_axis(ax_phase_deriv, 'x', a.start, a.stop, step=a.step,
+                     minor=a.minor, label='time (ns)', labelpad=1)
+        a = axes_info['phase_deriv']['y']
         if i_tgt == 0:
-            set_axis(ax_phase_deriv, 'y', -200, 200, range=(-190, 190),
-                     step=100, minor=5, label='')
+            set_axis(ax_phase_deriv, 'y', a.start, a.stop, range=a.range,
+                     step=a.step, minor=a.minor, label='')
         else:
-            set_axis(ax_phase_deriv, 'y', -200, 200, range=(-190, 190),
-                     step=100, minor=5, label='', ticklabels=False)
+            set_axis(ax_phase_deriv, 'y', a.start, a.stop, range=a.range,
+                     step=a.step, minor=a.minor, label='', ticklabels=False)
         ax_phase_deriv.axhline(y=delta2, ls='--',
                                color=get_color('green'))
         ax_phase_deriv.axhline(y=delta1, ls='--',
@@ -190,14 +178,16 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
         p.render_pulse(ax_pulse)
         avg_pulse = np.trapz(np.abs(p.amplitude), p.tgrid) / p.tgrid[-1]
         ax_pulse.axhline(y=avg_pulse, color='black', dashes=ls['dotted'])
-        set_axis(ax_pulse, 'x', 0, 100, step=20, minor=2, #label='time (ns)',
-                 label='', ticklabels=False,
-                 labelpad=1)
+        a = axes_info['time']
+        set_axis(ax_pulse, 'x', a.start, a.stop, step=a.step, minor=a.minor,
+                 label='', ticklabels=False, labelpad=1)
+        a = axes_info['pulse']['y']
         if i_tgt == 0:
-            set_axis(ax_pulse, 'y', 0, 200, step=100, minor=5, label='')
+            set_axis(ax_pulse, 'y', a.start, a.stop, step=a.step,
+                     minor=a.minor, label='')
         else:
-            set_axis(ax_pulse, 'y', 0, 200, step=100, minor=5, label='',
-                     ticklabels=False)
+            set_axis(ax_pulse, 'y', a.start, a.stop, step=a.step,
+                     minor=a.minor, label='', ticklabels=False)
 
         # logical subspace population
         pos = [left_offset/fig_width,log_offset/fig_height,
@@ -212,18 +202,20 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
         avg_loss = np.trapz(pop_loss, tgrid) / tgrid[-1]
         ax_log.fill(tgrid, pop_loss, color=get_color('grey'))
         ax_log.axhline(y=avg_loss, color='black', dashes=ls['dotted'])
+        a = axes_info['time']
         if i_tgt < 4:
-            set_axis(ax_log, 'x', 0, 100, step=20, minor=2, label='time (ns)',
-                    labelpad=1, drop_ticklabels=[-1, ])
+            set_axis(ax_log, 'x', a.start, a.stop, step=a.step, minor=a.minor,
+                     label='time (ns)', labelpad=1, drop_ticklabels=[-1, ])
         else:
-            set_axis(ax_log, 'x', 0, 100, step=20, minor=2, label='time (ns)',
-                    labelpad=1)
+            set_axis(ax_log, 'x', a.start, a.stop, step=a.step, minor=a.minor,
+                     label='time (ns)', labelpad=1)
+        a = axes_info['log']['y']
         if i_tgt == 0:
-            set_axis(ax_log, 'y', 0, 0.1, range=(0,0.12), step=0.05, minor=5,
-                     label='')
+            set_axis(ax_log, 'y', a.start, a.stop, range=a.range, step=a.step,
+                     minor=a.minor, label='')
         else:
-            set_axis(ax_log, 'y', 0, 0.1, range=(0,0.12), step=0.05, minor=5,
-                     label='', ticklabels=False)
+            set_axis(ax_log, 'y', a.start, a.stop, range=a.range, step=a.step,
+                     minor=a.minor, label='', ticklabels=False)
 
         # population dynamics
         def split_polar(U_over_t, U0_over_t):
@@ -372,11 +364,8 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
                 (log_offset+0.5*log_h)/fig_height,
                 r'$P_\text{outside}$',
                 rotation='vertical', va='center', ha='left')
+    return fig
 
-    if OUTFOLDER is not None:
-        outfile = os.path.join(OUTFOLDER, outfile)
-    fig.savefig(outfile, format=os.path.splitext(outfile)[1][1:])
-    print("written %s" % outfile)
 
 
 def latex_exp(f):
@@ -386,13 +375,7 @@ def latex_exp(f):
     return r'%.1f \times 10^{%d}' % (float(mantissa), int(exponent))
 
 
-def main(argv=None):
-
-    if argv is None:
-        argv = sys.argv
-    if not os.path.isdir(OUTFOLDER):
-        QDYN.shutil.mkdir(OUTFOLDER)
-
+def generate_universal_pulse_plot_100ns(outfile):
     universal_root = './PLOT/'
     universal_rf = {
         'H_L': universal_root+'H_left',
@@ -408,9 +391,59 @@ def main(argv=None):
         'S_R': universal_root+'fieldfree_2',
         'PE':  universal_root+'fieldfree_c'
     }
+    errors_diss = {
+        'H_L': 7.2e-3, 'H_R': 7.3e-3, 'S_L': 7.4e-3, 'S_R': 7.7e-3,
+        'PE':  7.4e-3,
+    }
+
+    errors_nodiss = {
+        'H_L': 7.2e-3, 'H_R': 7.3e-3, 'S_L': 7.4e-3, 'S_R': 7.7e-3,
+        'PE':  7.4e-3,
+    }
+    w_center = 5932.5
+    w_1_dressed = 5982.5
+    w_2_dressed = 5882.4
+    wd = {
+        'H_L': w_2_dressed, 'H_R': w_2_dressed,
+        'S_L': w_2_dressed, 'S_R': w_2_dressed,
+        'PE':  w_center,
+    }
+    axes_info = {
+        'spec': {
+            'x':  AttrDict(start=-200, stop=200, step=100, range=(-190, 190),
+                           minor=10),
+            'y':  AttrDict(start=0, stop=100, step=50, range=None, minor=2)
+        },
+        'time': AttrDict(start=0, stop=100, step=20, range=None, minor=2),
+        'phase_deriv': {
+            'y': AttrDict(start=-200, stop=200, step=100, range=(-190, 190),
+                          minor=5),
+        },
+        'pulse': {
+            'y': AttrDict(start=0, stop=200, step=100, range=None, minor=5),
+        },
+        'log': {
+            'y': AttrDict(start=0, stop=0.1, step=0.05, range=(0, 0.12),
+                          minor=5),
+        },
+    }
+    fig = render_universal_pulse_plot(
+        universal_rf, field_free_rf, errors_diss, errors_nodiss, wd, axes_info)
+    if OUTFOLDER is not None:
+        outfile = os.path.join(OUTFOLDER, outfile)
+    fig.savefig(outfile, format=os.path.splitext(outfile)[1][1:])
+    print("written %s" % outfile)
+
+
+def main(argv=None):
+
+    if argv is None:
+        argv = sys.argv
+    if not os.path.isdir(OUTFOLDER):
+        QDYN.shutil.mkdir(OUTFOLDER)
+
     # Fig 5
-    generate_universal_pulse_plot(universal_rf, field_free_rf,
-                                  outfile='fig5.pdf')
+    generate_universal_pulse_plot_100ns(outfile='fig5.pdf')
 
 if __name__ == "__main__":
     sys.exit(main())
