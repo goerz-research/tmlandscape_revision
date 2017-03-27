@@ -107,18 +107,18 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
         offset = w_center - wd[tgt]
         delta1 = offset + 0.5 * (49.82 + 50.11) # MHz
         delta2 = offset + 0.5 * (-50.25 -49.95) # MHz
-        alpha1 = offset + 0.5 * (-225.65 -219.73) # MHz
-        alpha2 = offset + 0.5 * (-341.00 -347.32 ) # MHz
+        alpha1 = 0.5 * (-225.65 -219.73) # MHz
+        alpha2 = 0.5 * (-341.00 -347.32 ) # MHz
         # Note: the above frequencies are "dressed", cf SpectralAnalysis.ipynb
         # The the splitting due to the static interaction (i.e., "other qubit
         # in 0 or 1") is small, so we just average the two values and draw a
         # single line
         ax_spec.axvline(x=delta2, ls='--', color=get_color('green'))
         ax_spec.axvline(x=delta1, ls='--', color=get_color('orange'))
-        ax_spec.text(x=(delta2-20), y=85, s=r'$\omega_2^d$',
+        ax_spec.text(x=(delta2-20), y=85, s=r'2',
                      ha='right', va='top', color=get_color('green'),
                      bbox=dict(linewidth=0, facecolor='white', alpha=0.0))
-        ax_spec.text(x=(delta1+20), y=85, s=r'$\omega_1^d$',
+        ax_spec.text(x=(delta1+20), y=85, s=r'1',
                      ha='left', va='top', color=get_color('orange'),
                      bbox=dict(linewidth=0, facecolor='white', alpha=0.0))
         ax_spec.axvline(x=(delta2+alpha2), ls='dotted',
