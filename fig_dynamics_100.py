@@ -23,16 +23,30 @@ OUTFOLDER = './paper_images'
 #OUTFOLDER = '/Users/goerz/Documents/Papers/TransmonLandscape'
 
 
+def render_eqnarray(
+        fig, fig_width, fig_height, x, y, eq_gap, lineheight, eqns):
+    """Render an array of equations onto `fig`"""
+    for i, (lhs, rhs) in enumerate(eqns):
+        fig.text((x - eq_gap)/fig_width, (y - i * lineheight)/fig_height,
+                 "$%s$" % lhs, verticalalignment='center',
+                 horizontalalignment='right')
+        fig.text((x)/fig_width, (y - i * lineheight)/fig_height,
+                 '$=$', verticalalignment='center',
+                 horizontalalignment='center')
+        fig.text((x + eq_gap)/fig_width, (y - i * lineheight)/fig_height,
+                 "$%s$" % rhs, verticalalignment='center',
+                 horizontalalignment='left')
+
 
 def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
     fig_width    = 18.0
-    fig_height   = 14.2
+    fig_height   = 13.2
     spec_offset  =  0.7
     phase_deriv_offset =  2.95
     pulse_offset = 4.45
     phase_deriv_h =  1.5
-    label_offset = 12.5
-    error_offset = 12.1
+    label_offset = 13.1
+    error_offset = 12.5
     spec_h       =  1.5
     pulse_h      =  1.5
     left_margin  =  1.4
@@ -56,8 +70,15 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
             'PE': r'BGATE',
     }
 
-    errors = { # errors obtained from *Liouville space* propagation, see
-               # ./propagate_universal/rho folder
+    errors_diss = {
+            'H_L': 7.2e-3,
+            'H_R': 7.3e-3,
+            'S_L': 7.4e-3,
+            'S_R': 7.7e-3,
+            'PE':  7.4e-3,
+    }
+
+    errors_nodiss = {
             'H_L': 7.2e-3,
             'H_R': 7.3e-3,
             'S_L': 7.4e-3,
@@ -84,18 +105,22 @@ def generate_universal_pulse_plot(universal_rf, field_free_rf, outfile):
 
         p = QDYN.pulse.Pulse.read(
                 os.path.join(universal_rf[tgt], 'pulse1.dat'), freq_unit='MHz')
-        err = errors[tgt] #  Liouville space error
+        err_diss = errors_diss[tgt]  #  Liouville space error
+        err_nodiss = errors_nodiss[tgt]  #  Hilbert space error
         freq, spectrum = p.spectrum(mode='abs', sort=True)
         spectrum *= 1.0 / len(spectrum)
 
-        # column labels
+        # column labels, errors
         fig.text((left_offset + 0.5*w)/fig_width, label_offset/fig_height,
-                  labels[tgt], verticalalignment='top',
-                  horizontalalignment='center')
-
-        fig.text((left_offset + 0.5*w)/fig_width, error_offset/fig_height,
-                  r'$\varepsilon_{\text{avg}} = %s$' % latex_exp(err),
-                  verticalalignment='top', horizontalalignment='center')
+                 labels[tgt], verticalalignment='top',
+                 horizontalalignment='center')
+        eqns = (
+            (r'\varepsilon^{\text{no diss.}}_{\text{avg}}',
+                latex_exp(err_nodiss)),
+            (r'\varepsilon^{\text{diss.}}_{\text{avg}}',
+                latex_exp(err_diss)))
+        render_eqnarray(fig, fig_width, fig_height, left_offset + 0.5*w - 0.3,
+                error_offset, eq_gap=0.15, lineheight=0.5, eqns=eqns)
 
         # spectrum
         pos = [left_offset/fig_width, spec_offset/fig_height,
