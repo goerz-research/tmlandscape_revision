@@ -376,7 +376,7 @@ def latex_exp(f):
 
 
 def generate_universal_pulse_plot_100ns(outfile):
-    universal_root = './PLOT/'
+    universal_root = './PLOT100/'
     universal_rf = {
         'H_L': universal_root+'H_left',
         'H_R': universal_root+'H_right',
@@ -391,15 +391,15 @@ def generate_universal_pulse_plot_100ns(outfile):
         'S_R': universal_root+'fieldfree_2',
         'PE':  universal_root+'fieldfree_c'
     }
+    errors_nodiss = {
+        'H_L': 3.5e-5, 'H_R': 8.0e-5, 'S_L': 2.1e-4, 'S_R': 5.7e-4,
+        'PE':  1.8e-4,
+    }
     errors_diss = {
         'H_L': 7.2e-3, 'H_R': 7.3e-3, 'S_L': 7.4e-3, 'S_R': 7.7e-3,
         'PE':  7.4e-3,
     }
 
-    errors_nodiss = {
-        'H_L': 7.2e-3, 'H_R': 7.3e-3, 'S_L': 7.4e-3, 'S_R': 7.7e-3,
-        'PE':  7.4e-3,
-    }
     w_center = 5932.5
     w_1_dressed = 5982.5
     w_2_dressed = 5882.4
@@ -435,6 +435,65 @@ def generate_universal_pulse_plot_100ns(outfile):
     print("written %s" % outfile)
 
 
+def generate_universal_pulse_plot_50ns(outfile):
+    universal_root = './PLOT50/'
+    universal_rf = {
+        'H_L': universal_root+'H_left',
+        'H_R': universal_root+'H_right',
+        'S_L': universal_root+'Ph_left',
+        'S_R': universal_root+'Ph_right',
+        'PE':  universal_root+'BGATE'
+    }
+    field_free_rf = {
+        'H_L': universal_root+'fieldfree_HL',
+        'H_R': universal_root+'fieldfree_HR',
+        'S_L': universal_root+'fieldfree_SL',
+        'S_R': universal_root+'fieldfree_SR',
+        'PE':  universal_root+'fieldfree_BG'
+    }
+    errors_nodiss = {
+        'H_L': 6.3e-4, 'H_R': 9.1e-4, 'S_L': 9.0e-4, 'S_R': 3.7e-4,
+        'PE':  6.5e-4,
+    }
+    errors_diss = {
+        'H_L': 4.2e-3, 'H_R': 4.6e-3, 'S_L': 4.6e-3, 'S_R': 4.0e-3,
+        'PE':  4.3e-3,
+    }
+
+    w_center = 5932.5
+    w_1_dressed = 5982.5
+    w_2_dressed = 5882.4
+    wd = {
+        'H_L': w_center, 'H_R': w_center, 'S_L': w_center, 'S_R': w_center,
+        'PE':  w_center,
+    }
+    axes_info = {
+        'spec': {
+            'x':  AttrDict(start=-1000, stop=1000, step=500, range=(-650, 600),
+                           minor=5),
+            'y':  AttrDict(start=0, stop=100, step=50, range=None, minor=2)
+        },
+        'time': AttrDict(start=0, stop=50, step=10, range=None, minor=2),
+        'phase_deriv': {
+            'y': AttrDict(start=-500, stop=500, step=200, range=(-450, 250),
+                          minor=2),
+        },
+        'pulse': {
+            'y': AttrDict(start=0, stop=300, step=100, range=None, minor=2),
+        },
+        'log': {
+            'y': AttrDict(start=0, stop=0.3, step=0.1, range=(0, 0.25),
+                          minor=2),
+        },
+    }
+    fig = render_universal_pulse_plot(
+        universal_rf, field_free_rf, errors_diss, errors_nodiss, wd, axes_info)
+    if OUTFOLDER is not None:
+        outfile = os.path.join(OUTFOLDER, outfile)
+    fig.savefig(outfile, format=os.path.splitext(outfile)[1][1:])
+    print("written %s" % outfile)
+
+
 def main(argv=None):
 
     if argv is None:
@@ -443,7 +502,8 @@ def main(argv=None):
         QDYN.shutil.mkdir(OUTFOLDER)
 
     # Fig 5
-    generate_universal_pulse_plot_100ns(outfile='fig5.pdf')
+    generate_universal_pulse_plot_50ns(outfile='fig5.pdf')
+    generate_universal_pulse_plot_100ns(outfile='fig_supp.pdf')
 
 if __name__ == "__main__":
     sys.exit(main())
