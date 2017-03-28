@@ -111,7 +111,7 @@ def render_universal_pulse_plot(universal_rf, field_free_rf, errors_diss,
         ax_spec.plot(freq, 1.1*spectrum, label='spectrum')
         a = axes_info['spec']['x']
         set_axis(ax_spec, 'x', a.start, a.stop, range=a.range, step=a.step,
-                 minor=a.minor, label=r'$\Delta f$ (MHz)', labelpad=1)
+                 minor=a.minor, label=r'$\delta \omega$ (MHz)', labelpad=1)
         offset = w_center - wd[tgt]
         delta1 = offset + 0.5 * (49.82 + 50.11) # MHz
         delta2 = offset + 0.5 * (-50.25 -49.95) # MHz
@@ -411,20 +411,20 @@ def generate_universal_pulse_plot_100ns(outfile):
     axes_info = {
         'spec': {
             'x':  AttrDict(start=-200, stop=200, step=100, range=(-190, 190),
-                           minor=10),
+                           minor=5),
             'y':  AttrDict(start=0, stop=100, step=50, range=None, minor=2)
         },
         'time': AttrDict(start=0, stop=100, step=20, range=None, minor=2),
         'phase_deriv': {
             'y': AttrDict(start=-200, stop=200, step=100, range=(-190, 190),
-                          minor=5),
+                          minor=2),
         },
         'pulse': {
-            'y': AttrDict(start=0, stop=200, step=100, range=None, minor=5),
+            'y': AttrDict(start=0, stop=200, step=100, range=None, minor=2),
         },
         'log': {
             'y': AttrDict(start=0, stop=0.1, step=0.05, range=(0, 0.12),
-                          minor=5),
+                          minor=2),
         },
     }
     fig = render_universal_pulse_plot(
