@@ -372,7 +372,7 @@ def get_U(pulse, wd, gate=None, J_T=None, dissipation=True,
     return U
 
 
-def evaluate_pulse_rho(pulse, gate, wd, n_qubit=5, n_cavity=6):
+def evaluate_pulse_rho(pulse, gate, wd, n_qubit=5, n_cavity=6, silent=False):
     """Propagate pulse in Liouville space"""
     n_qubit = n_qubit
     n_cavity = n_cavity
@@ -385,7 +385,8 @@ def evaluate_pulse_rho(pulse, gate, wd, n_qubit=5, n_cavity=6):
         gate = GATE[gate]
     assert isinstance(gate, QDYN.gate2q.Gate2Q)
 
-    print("preprocessing in %s" % rf)
+    if not silent:
+        print("preprocessing in %s" % rf)
     model = transmon_model(
         n_qubit, n_cavity, w1, w2, wc, wd, alpha1, alpha2, g, gamma, kappa,
         lambda_a=1.0, pulse=pulse, dissipation_model='dissipator',
@@ -399,7 +400,8 @@ def evaluate_pulse_rho(pulse, gate, wd, n_qubit=5, n_cavity=6):
     gate.write(os.path.join(rf, 'target_gate.dat'), format='array')
 
     # propagate
-    print("starting propagation in %s" % rf)
+    if not silent:
+        print("starting propagation in %s" % rf)
     env = os.environ.copy()
     env['OMP_NUM_THREADS'] = '16'
     try:
@@ -412,7 +414,8 @@ def evaluate_pulse_rho(pulse, gate, wd, n_qubit=5, n_cavity=6):
         print(exc_info)
     err = float(re.search(r'1-F_avg\(U, O\)\s*=\s*([Ee.0-9+-]*)',
                           stdout).group(1))
-    print("err_avg = %.4e" % err)
+    if not silent:
+        print("err_avg = %.4e" % err)
     return err
 
 
