@@ -111,7 +111,7 @@ def render_universal_pulse_plot(universal_rf, field_free_rf, errors_diss,
         ax_spec.plot(freq, 1.1*spectrum, label='spectrum')
         a = axes_info['spec']['x']
         set_axis(ax_spec, 'x', a.start, a.stop, range=a.range, step=a.step,
-                 minor=a.minor, label=r'$\delta \omega$ (MHz)', labelpad=1)
+                 minor=a.minor, label=r'$\delta$ (MHz)', labelpad=1)
         offset = w_center - wd[tgt]
         delta1 = offset + 0.5 * (49.82 + 50.11) # MHz
         delta2 = offset + 0.5 * (-50.25 -49.95) # MHz
