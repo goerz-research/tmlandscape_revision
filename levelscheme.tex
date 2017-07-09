@@ -1,0 +1,28 @@
+\documentclass[a4paper,10pt]{article}
+
+\usepackage{tikz,pgflibraryshapes}
+\usetikzlibrary{calc}
+\usepackage[psfixbb,graphics,tightpage,active]{preview}
+
+\PreviewEnvironment{tikzpicture}
+
+\newcommand\shorteq{%
+ \rule[.4ex]{4pt}{0.4pt}\llap{\rule[.7ex]{4pt}{0.4pt}}}
+\newcommand\MHz{%
+  M\hskip-0.4ptHz}
+
+
+\begin{document}
+\begin{tikzpicture}[x=0.5cm,y=0.004cm,font=\sffamily]
+  \scriptsize
+  \draw (0, 6200) -- +(1, 0) node[above=-2pt,pos=0.1]{$\omega_{\hskip-0.5pt{}c}$\shorteq\,6200};
+    \draw (1, 6200) -- (1.3, 6235);
+    \draw (1.3, 6235) -- + (1, 0) node[above=-1pt,pos=0.95]{6235\,\MHz};;
+  \draw (0, 6000) -- +(1, 0) node[above=-2pt,pos=0.1]{$\omega_{\hskip-0.5pt{}1}$\shorteq\,6000};
+    \draw (1, 6000) -- (1.3, 5982);
+    \draw (1.3, 5982) -- + (1, 0) node[above=-1pt,pos=0.95]{5982\,\MHz};
+  \draw (0, 5900) -- +(1, 0) node[above=-2pt,pos=0.1]{$\omega_{\hskip-0.5pt{}2}$\shorteq\,5900};
+    \draw (1, 5900) -- (1.3, 5882);
+    \draw (1.3, 5882) -- + (1, 0) node[above=-1pt,pos=0.95]{5882\,\MHz};
+\end{tikzpicture}
+\end{document}
