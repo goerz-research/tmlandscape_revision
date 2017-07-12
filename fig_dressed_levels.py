@@ -60,6 +60,8 @@ def generate_dressed_level_plot(horiz_file, vert_file, outfile):
     ax = fig.add_axes(pos)
 
     ax.axhline(y=0, lw=0.5, color='gray')
+    ax.axvline(x=((w2_x-w1_x)/g), lw=0.5, color='gray')
+    ax.axvline(x=0, lw=0.5, color='gray')
 
     ax.plot(x, E_01 - w2, label=r'$\Delta E_{01}$', color=green)
     ax.plot(x, E_10 - w1, label=r'$\Delta E_{10}$', color=purple,
@@ -93,6 +95,8 @@ def generate_dressed_level_plot(horiz_file, vert_file, outfile):
     ax = fig.add_axes(pos)
 
     ax.axhline(y=0, lw=0.5, color='gray')
+    ax.axvline(x=((w2_x-w1_x)/g), lw=0.5, color='gray')
+    ax.axvline(x=0, lw=0.5, color='gray')
 
     ax.plot(x, E_01 + E_10 - w1 - w2, label='$\Delta E_{01}+\Delta E_{10}$',
             color=blue, dashes=ls['dotted'])
@@ -106,7 +110,8 @@ def generate_dressed_level_plot(horiz_file, vert_file, outfile):
         textcoords='data', arrowprops=dict(arrowstyle="<->",
         connectionstyle="arc3"))
     ax.annotate("$\zeta$", xy=(-1.5, 27.5), xycoords="data",
-                va="center", ha="center")
+                va="center", ha="center",
+                bbox=dict(boxstyle='square,pad=0', fc='white', ec='none'))
     ax.annotate("$\omega_1 \equiv$ 6000 MHz", xy=(8, 24),
                 xycoords="axes points", va="center", ha="left")
     ax.annotate("$\omega_2 \equiv$ 5900 MHz", xy=(8, 15),
@@ -132,6 +137,8 @@ def generate_dressed_level_plot(horiz_file, vert_file, outfile):
     ax = fig.add_axes(pos)
 
     ax.axhline(y=0, lw=0.5, color='gray')
+    ax.axvline(x=((wc_x-w1_x)/alpha), lw=0.5, color='gray')
+    ax.axvline(x=0, lw=0.5, color='gray')
 
     line_01, = ax.plot(x, E_01 - w2, label=r'$\Delta E_{01}$', color=green)
     line_10, = ax.plot(x, E_10 - w1, label=r'$\Delta E_{10}$', color=purple,
@@ -144,9 +151,11 @@ def generate_dressed_level_plot(horiz_file, vert_file, outfile):
     ax.axvline(x=((w2_x-w1_x)/alpha), ls='dashed', color='black')
     ax.axvline(x=((w2_x-w1_x)/alpha), ls='dashed', color='black')
 
-    legend_top = ax.legend(handles=[line_cav], loc='upper right', ncol=1)
+    legend_top = ax.legend(handles=[line_cav], loc='upper right', ncol=1, frameon=1)
+    legend_top.get_frame().set_color('white')
+    legend_top.get_frame().set_alpha(0)
     ax.add_artist(legend_top)
-    legend_bottom = ax.legend(handles=[line_01, line_10], loc=(0.71, -0.02),
+    legend_bottom = ax.legend(handles=[line_01, line_10], loc=(0.715, -0.02),
                               ncol=1)
     ax.add_artist(legend_bottom)
     #legend3 = ax.legend(handles=[line_20, line_02], loc=(0.02, -0.02), ncol=1) # XXX
@@ -174,6 +183,8 @@ def generate_dressed_level_plot(horiz_file, vert_file, outfile):
     ax = fig.add_axes(pos)
 
     ax.axhline(y=0, lw=0.5, color='gray')
+    ax.axvline(x=((wc_x-w1_x)/alpha), lw=0.5, color='gray')
+    ax.axvline(x=0, lw=0.5, color='gray')
 
     line_sum, = ax.plot(x, E_01 + E_10 - w1 - w2,
                         label='$\Delta E_{01}+\Delta E_{10}$', color=blue,
@@ -183,14 +194,18 @@ def generate_dressed_level_plot(horiz_file, vert_file, outfile):
 
     ax.axvline(x=((w2_x-w1_x)/alpha), ls='dashed', color='black')
 
-    legend_top = ax.legend(handles=[line_sum], loc='upper right', ncol=1)
+    legend_top = ax.legend(handles=[line_sum], ncol=1, frameon=1, borderpad=-0.25, loc=(0.605, 0.82))
+    legend_top.get_frame().set_color('white')
+    legend_top.get_frame().set_alpha(1)
     ax.add_artist(legend_top)
     legend_bottom = ax.legend(handles=[line_11], loc='lower right', ncol=1)
 
     ax.annotate("$\omega_1 \equiv$ 6000 MHz", xy=(8, 46),
                 xycoords="axes points", va="center", ha="left")
+                #bbox=dict(boxstyle='square,pad=0.02', fc='white', ec='none'))
     ax.annotate("$\omega_c \equiv$ 6200 MHz", xy=(8, 38),
                 xycoords="axes points", va="center", ha="left")
+                #bbox=dict(boxstyle='square,pad=0.02', fc='white', ec='none'))
     #ax.annotate("$\omega_2 =$ 5900 MHz", xy=(-0.3, 70), xycoords="data",
                 #va="center", ha="left")
 
